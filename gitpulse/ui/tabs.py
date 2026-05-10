@@ -90,19 +90,19 @@ class CommitModal(ModalScreen):
         width: 64;
         height: auto;
         padding: 1 2;
-        background: #1e2030;
-        border: thick #7aa2f7;
+        background: #1a1a24;
+        border: thick #ff2d4a;
     }
     #commit-title {
         text-style: bold;
-        color: #7aa2f7;
+        color: #ff2d4a;
         margin-bottom: 1;
         text-align: center;
         width: 100%;
         height: 1;
     }
     #commit-staged-info {
-        color: #9ece6a;
+        color: #3ddc84;
         margin-bottom: 1;
         width: 100%;
         height: auto;
@@ -131,7 +131,7 @@ class CommitModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Container(id="commit-dialog"):
-            yield Static(" 󰄬  Commit Changes", id="commit-title", markup=False)
+            yield Static(" ✔  Commit Changes", id="commit-title", markup=False)
             n = len(self._staged_files)
             if n == 0:
                 info = "  No files staged. Use 's' or 'a' to stage first."
@@ -186,12 +186,12 @@ class NewBranchModal(ModalScreen):
         width: 52;
         height: auto;
         padding: 1 2;
-        background: #1e2030;
-        border: thick #bb9af7;
+        background: #1a1a24;
+        border: thick #e040fb;
     }
     #new-branch-title {
         text-style: bold;
-        color: #bb9af7;
+        color: #e040fb;
         margin-bottom: 1;
         text-align: center;
         width: 100%;
@@ -217,7 +217,7 @@ class NewBranchModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Container(id="new-branch-dialog"):
-            yield Static("  New Branch", id="new-branch-title", markup=False)
+            yield Static("⎇  New Branch", id="new-branch-title", markup=False)
             yield Input(
                 placeholder="Branch name  (Enter to create · Esc to cancel)",
                 id="new-branch-input",
@@ -265,14 +265,14 @@ class CommitDiffModal(ModalScreen):
     #cdiff-frame {
         width: 92%;
         height: 88%;
-        background: #1e2030;
-        border: thick #7aa2f7;
+        background: #1a1a24;
+        border: thick #ff2d4a;
     }
     #cdiff-title {
         dock: top;
         height: 1;
-        background: #24283b;
-        color: #7aa2f7;
+        background: #242430;
+        color: #ff2d4a;
         text-style: bold;
         padding: 0 1;
     }
@@ -286,10 +286,10 @@ class CommitDiffModal(ModalScreen):
     #cdiff-footer {
         dock: bottom;
         height: 1;
-        background: #1e2030;
-        color: #565f89;
+        background: #1a1a24;
+        color: #555568;
         padding: 0 1;
-        border-top: solid #3b4261;
+        border-top: solid #2a2a3a;
     }
     """
 
@@ -341,12 +341,12 @@ class StashModal(ModalScreen):
         width: 56;
         height: auto;
         padding: 1 2;
-        background: #1e2030;
-        border: thick #e0af68;
+        background: #1a1a24;
+        border: thick #ffb74d;
     }
     #stash-title {
         text-style: bold;
-        color: #e0af68;
+        color: #ffb74d;
         margin-bottom: 1;
         text-align: center;
         width: 100%;
@@ -416,14 +416,14 @@ class FilePreviewModal(ModalScreen):
     #fpreview-frame {
         width: 92%;
         height: 88%;
-        background: #1e2030;
-        border: thick #9ece6a;
+        background: #1a1a24;
+        border: thick #3ddc84;
     }
     #fpreview-title {
         dock: top;
         height: 1;
-        background: #24283b;
-        color: #9ece6a;
+        background: #242430;
+        color: #3ddc84;
         text-style: bold;
         padding: 0 1;
     }
@@ -437,10 +437,10 @@ class FilePreviewModal(ModalScreen):
     #fpreview-footer {
         dock: bottom;
         height: 1;
-        background: #1e2030;
-        color: #565f89;
+        background: #1a1a24;
+        color: #555568;
         padding: 0 1;
-        border-top: solid #3b4261;
+        border-top: solid #2a2a3a;
     }
     """
 
@@ -509,9 +509,9 @@ class BranchListItem(ListItem):
 
     def compose(self) -> ComposeResult:
         if self.branch_info.is_current:
-            label = f"[bold #9ece6a]● {self.branch_info.name}[/]  [dim italic](current)[/]"
+            label = f"[bold #3ddc84]● {self.branch_info.name}[/]  [dim italic](current)[/]"
         else:
-            label = f"[#a9b1d6]  {self.branch_info.name}[/]"
+            label = f"[#d4d4dc]  {self.branch_info.name}[/]"
         yield Static(label, markup=True)
 
 
@@ -534,11 +534,11 @@ class DiffFileItem(ListItem):
         self.file_status = status  # "staged" | "unstaged" | "untracked"
         t = Text(overflow="ellipsis", no_wrap=True)
         if status == "staged":
-            t.append(f"+ {filepath}", style="bold #9ece6a")
+            t.append(f"+ {filepath}", style="bold #3ddc84")
         elif status == "unstaged":
-            t.append(f"~ {filepath}", style="#e0af68")
+            t.append(f"~ {filepath}", style="#ffb74d")
         else:
-            t.append(f"? {filepath}", style="dim #f7768e")
+            t.append(f"? {filepath}", style="dim #ff5252")
         super().__init__(Static(t), **kwargs)
 
 
@@ -561,14 +561,14 @@ class StatusFileItem(ListItem):
         self.file_status = status  # "staged" | "unstaged" | "untracked"
         t = Text(overflow="ellipsis", no_wrap=True)
         if status == "staged":
-            t.append("+ staged    ", style="bold #9ece6a")
-            t.append(filepath, style="#9ece6a")
+            t.append("+ staged    ", style="bold #3ddc84")
+            t.append(filepath, style="#3ddc84")
         elif status == "unstaged":
-            t.append("~ unstaged  ", style="#e0af68")
-            t.append(filepath, style="#e0af68")
+            t.append("~ unstaged  ", style="#ffb74d")
+            t.append(filepath, style="#ffb74d")
         else:
-            t.append("? untracked ", style="#f7768e")
-            t.append(filepath, style="#f7768e")
+            t.append("? untracked ", style="#ff5252")
+            t.append(filepath, style="#ff5252")
         super().__init__(Static(t), **kwargs)
 
 
@@ -642,7 +642,7 @@ class MainPanel(Widget):
                 )
                 yield ListView(id="status-file-list")
                 yield Static(
-                    "[dim #565f89]  s=stage  u=unstage  a=stage-all  U=unstage-all  c=commit  z=stash  Z=pop-stash[/]",
+                    f"[dim #555568]  s=stage  u=unstage  a=stage-all  U=unstage-all  c=commit  z=stash  Z=pop-stash[/]",
                     id="status-hints",
                     markup=True,
                 )
@@ -658,7 +658,7 @@ class MainPanel(Widget):
                         )
                     yield DataTable(id="commits-table")
                 yield Static(
-                    "[dim #565f89]  Enter or d = view commit diff[/]",
+                    "[dim #555568]  Enter or d = view commit diff[/]",
                     id="commits-hints",
                     markup=True,
                 )
@@ -668,7 +668,7 @@ class MainPanel(Widget):
                 with Horizontal(id="diff-layout"):
                     with Vertical(id="diff-file-panel"):
                         yield Static(
-                            "[bold #7aa2f7] Files[/]",
+                            "[bold #ff2d4a] Files[/]",
                             id="diff-file-header",
                             markup=True,
                         )
@@ -680,7 +680,7 @@ class MainPanel(Widget):
                             markup=True,
                         )
                 yield Static(
-                    "[dim #565f89]  + staged  ~ unstaged  ? untracked  ·  ↑↓ to navigate files[/]",
+                    "[dim #555568]  + staged  ~ unstaged  ? untracked  ·  ↑↓ to navigate files[/]",
                     id="diff-footer",
                     markup=True,
                 )
@@ -689,7 +689,7 @@ class MainPanel(Widget):
             with TabPane("🌿 Branches", id="tab-branches"):
                 yield ListView(id="branch-list")
                 yield Static(
-                    "[dim #565f89]  Enter=switch branch  n=new branch  d=delete branch[/]",
+                    "[dim #555568]  Enter=switch branch  n=new branch  d=delete branch[/]",
                     id="branch-hints",
                     markup=True,
                 )
@@ -703,7 +703,7 @@ class MainPanel(Widget):
                         markup=True,
                     )
                 yield Static(
-                    "[dim #565f89]  f=fetch  p=pull  P=push[/]",
+                    "[dim #555568]  f=fetch  p=pull  P=push[/]",
                     id="remotes-hints",
                     markup=True,
                 )
@@ -716,7 +716,7 @@ class MainPanel(Widget):
             with TabPane("🌲 Tree", id="tab-tree"):
                 yield Tree("🌲 Select a repository to browse files", id="tree-widget")
                 yield Static(
-                    "[dim #565f89]  ↑↓ navigate  Enter = preview file[/]",
+                    "[dim #555568]  ↑↓ navigate  Enter = preview file[/]",
                     id="tree-hints",
                     markup=True,
                 )
@@ -778,30 +778,30 @@ class MainPanel(Widget):
         stashes = get_stashes(repo_path)
 
         header = Text()
-        header.append("  Path:   ", style="bold #7aa2f7")
-        header.append(str(repo_path) + "\n", style="dim #565f89")
+        header.append("  Path:   ", style="bold #ff2d4a")
+        header.append(str(repo_path) + "\n", style="dim #555568")
         if info:
             rel = relative_time(info.last_commit_ts)
-            header.append("  Branch: ", style="bold #7aa2f7")
-            header.append(info.branch + "\n", style="#bb9af7")
-            header.append("  Commit: ", style="bold #7aa2f7")
+            header.append("  Branch: ", style="bold #ff2d4a")
+            header.append(info.branch + "\n", style="#e040fb")
+            header.append("  Commit: ", style="bold #ff2d4a")
             header.append(info.last_commit_msg, style="dim")
-            header.append(f"  ({rel})\n", style="dim #565f89")
-            header.append("  Stats:  ", style="bold #7aa2f7")
-            header.append(str(info.total_commits), style="#9ece6a")
+            header.append(f"  ({rel})\n", style="dim #555568")
+            header.append("  Stats:  ", style="bold #ff2d4a")
+            header.append(str(info.total_commits), style="#3ddc84")
             header.append(" commits · ")
-            header.append(str(info.contributor_count), style="#e0af68")
+            header.append(str(info.contributor_count), style="#ffb74d")
             n_contrib = info.contributor_count
             header.append(f" contributor{'s' if n_contrib != 1 else ''}")
         if stashes:
-            header.append(f"\n  Stashes: ", style="bold #7aa2f7")
-            header.append(str(len(stashes)), style="#7dcfff")
+            header.append(f"\n  Stashes: ", style="bold #ff2d4a")
+            header.append(str(len(stashes)), style="#4dd0e1")
             header.append(f" ({', '.join(s.message[:30] for s in stashes[:2])})", style="dim")
 
         summary_panel = Panel(
             header,
-            title=f"[bold #c0caf5] {repo_path.name} [/]",
-            border_style="#3b4261",
+            title=f"[bold #d4d4dc] {repo_path.name} [/]",
+            border_style="#2a2a3a",
             padding=(0, 0),
         )
         self.query_one("#status-summary", Static).update(summary_panel)
@@ -812,28 +812,28 @@ class MainPanel(Widget):
         if not fs.staged and not fs.unstaged and not fs.untracked:
             file_list.append(
                 ListItem(Static(
-                    "[bold #9ece6a]  ✨ Working tree clean — nothing to commit[/]",
+                    "[bold #3ddc84]  ✨ Working tree clean — nothing to commit[/]",
                     markup=True,
                 ))
             )
         else:
             if fs.staged:
                 file_list.append(ListItem(Static(
-                    f"[bold #9ece6a]  ✔ Staged[/] [dim #565f89]({len(fs.staged)} file{'s' if len(fs.staged) != 1 else ''})[/]",
+                    f"[bold #3ddc84]  ✔ Staged[/] [dim #555568]({len(fs.staged)} file{'s' if len(fs.staged) != 1 else ''})[/]",
                     markup=True,
                 )))
                 for f in fs.staged:
                     file_list.append(StatusFileItem(f, "staged"))
             if fs.unstaged:
                 file_list.append(ListItem(Static(
-                    f"[bold #e0af68]  ● Unstaged[/] [dim #565f89]({len(fs.unstaged)} file{'s' if len(fs.unstaged) != 1 else ''})[/]",
+                    f"[bold #ffb74d]  ● Unstaged[/] [dim #555568]({len(fs.unstaged)} file{'s' if len(fs.unstaged) != 1 else ''})[/]",
                     markup=True,
                 )))
                 for f in fs.unstaged:
                     file_list.append(StatusFileItem(f, "unstaged"))
             if fs.untracked:
                 file_list.append(ListItem(Static(
-                    f"[bold #f7768e]  ○ Untracked[/] [dim #565f89]({len(fs.untracked)} file{'s' if len(fs.untracked) != 1 else ''})[/]",
+                    f"[bold #ff5252]  ○ Untracked[/] [dim #555568]({len(fs.untracked)} file{'s' if len(fs.untracked) != 1 else ''})[/]",
                     markup=True,
                 )))
                 for f in fs.untracked:
@@ -862,14 +862,14 @@ class MainPanel(Widget):
                 )
                 tagged = re.sub(
                     r"\b([0-9a-f]{7})\b",
-                    r"[bold #7aa2f7]\1[/]",
+                    r"[bold #ff2d4a]\1[/]",
                     tagged,
                 )
                 tagged = (
-                    tagged.replace(STAR, "[#bb9af7]*[/]")
-                          .replace(PIPE, "[#3b4261]|[/]")
-                          .replace(SLASH, "[#3b4261]/[/]")
-                          .replace(BACK, "[#3b4261]\\\\[/]")
+                    tagged.replace(STAR, "[#e040fb]*[/]")
+                          .replace(PIPE, "[#2a2a3a]|[/]")
+                          .replace(SLASH, "[#2a2a3a]/[/]")
+                          .replace(BACK, "[#2a2a3a]\\\\[/]")
                 )
                 colored_lines.append(tagged)
             graph_static.update("\n".join(colored_lines))
@@ -887,17 +887,17 @@ class MainPanel(Widget):
         authors = len(set(c.author for c in commits))
         hints: Static = self.query_one("#commits-hints", Static)
         hints.update(
-            f"[dim #565f89]  {len(commits)} commits · "
-            f"[#9ece6a]+{total_ins}[/] / [#f7768e]-{total_del}[/] lines · "
+            f"[dim #555568]  {len(commits)} commits · "
+            f"[#3ddc84]+{total_ins}[/] / [#ff5252]-{total_del}[/] lines · "
             f"{total_files} files · {authors} author{'s' if authors != 1 else ''} · "
             f"Enter or d = view diff[/]"
         )
 
         for c in commits:
             pm = Text()
-            pm.append(f"+{c.insertions}", style="bold #9ece6a")
+            pm.append(f"+{c.insertions}", style="bold #3ddc84")
             pm.append(" ")
-            pm.append(f"-{c.deletions}", style="bold #f7768e")
+            pm.append(f"-{c.deletions}", style="bold #ff5252")
             table.add_row(
                 c.short_hash, c.author, c.date,
                 c.message[:60], str(c.files_changed), pm,
@@ -942,17 +942,17 @@ class MainPanel(Widget):
             lines.append("[dim italic]No remotes configured[/]")
         else:
             for r in remotes:
-                lines.append(f"[bold #7aa2f7]━━ {r.name} ━━[/]")
+                lines.append(f"[bold #ff2d4a]━━ {r.name} ━━[/]")
                 lines.append(f"  [bold]URL:[/]   [dim]{r.url}[/]")
                 if r.ahead or r.behind:
                     parts = []
                     if r.ahead:
-                        parts.append(f"[bold #9ece6a]↑ {r.ahead} ahead[/]")
+                        parts.append(f"[bold #3ddc84]↑ {r.ahead} ahead[/]")
                     if r.behind:
                         parts.append(f"[bold #f7768e]↓ {r.behind} behind[/]")
                     lines.append(f"  [bold]Sync:[/]  {' · '.join(parts)}")
                 else:
-                    lines.append("  [bold]Sync:[/]  [#9ece6a]✓ Up to date[/]")
+                    lines.append("  [bold]Sync:[/]  [#3ddc84]✓ Up to date[/]")
                 lines.append("")
         self.query_one("#remotes-content", Static).update("\n".join(lines))
 
@@ -970,7 +970,7 @@ class MainPanel(Widget):
         tree_widget: Tree = self.query_one("#tree-widget", Tree)
         tree_widget.clear()
         tree_widget.root.label = Text.from_markup(
-            f"[bold #7aa2f7]\U0001f4c1 {repo_path.name}[/]"
+            f"[bold #ff2d4a]\U0001f4c1 {repo_path.name}[/]"
         )
         tree_widget.root.expand()
 
@@ -1002,7 +1002,7 @@ class MainPanel(Widget):
             files = sorted(k for k, v in d.items() if v is None)
             for name in dirs:
                 child = node.add(
-                    f"[bold #bb9af7]\ud83d\udcc2 {name}[/]",
+                    f"[bold #e040fb]\ud83d\udcc2 {name}[/]",
                     data={"type": "dir"},
                 )
                 _build(child, d[name], f"{prefix}{name}/")
@@ -1021,15 +1021,15 @@ class MainPanel(Widget):
                 }
                 icon = _FILE_ICONS.get(ext, "📄")
                 if ext in ("py", "js", "ts", "go", "rs", "c", "cpp", "java"):
-                    label = f"[#9ece6a]{icon} {name}[/]"
+                    label = f"[#3ddc84]{icon} {name}[/]"
                 elif ext in ("md", "rst", "txt"):
-                    label = f"[#e0af68]{icon} {name}[/]"
+                    label = f"[#ffb74d]{icon} {name}[/]"
                 elif ext in ("json", "yaml", "yml", "toml", "ini", "cfg", "env"):
-                    label = f"[#7dcfff]{icon} {name}[/]"
+                    label = f"[#4dd0e1]{icon} {name}[/]"
                 elif ext in ("sh", "bash", "zsh"):
                     label = f"[#f7768e]{icon} {name}[/]"
                 else:
-                    label = f"[#c0caf5]{icon} {name}[/]"
+                    label = f"[#d4d4dc]{icon} {name}[/]"
                 node.add_leaf(
                     label,
                     data={"type": "file", "path": f"{prefix}{name}"},

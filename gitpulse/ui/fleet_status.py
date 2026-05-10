@@ -31,7 +31,7 @@ class FleetChip(Static):
         content-align: center middle;
     }
     FleetChip:hover {
-        background: #283457;
+        background: #2d1520;
     }
     """
 
@@ -53,20 +53,21 @@ class FleetStatus(Widget):
     - ahead     — repos with unpushed commits
     - stashes   — total stash entries (sum)
     - stale     — repos with stale local branches
+    - all       — reset chip to clear any active filter
     """
 
     DEFAULT_CSS = """
     FleetStatus {
         height: 3;
-        background: #1e2030;
-        border-bottom: heavy #3b4261;
+        background: #1a1a24;
+        border-bottom: heavy #2a2a3a;
         layout: horizontal;
         align: left middle;
         padding: 0 1;
     }
     FleetStatus > Static#fleet-label {
         width: auto;
-        color: #565f89;
+        color: #555568;
         margin-right: 1;
     }
     """
@@ -85,13 +86,16 @@ class FleetStatus(Widget):
         yield FleetChip("ahead",   id="chip-ahead")
         yield FleetChip("stashes", id="chip-stashes")
         yield FleetChip("stale",   id="chip-stale")
+        yield FleetChip("all",     id="chip-all")
 
     def on_mount(self) -> None:
-        self._set_chip("chip-dirty",   "🔴", 0, "#f7768e")
-        self._set_chip("chip-behind",  "↓",  0, "#f7768e")
-        self._set_chip("chip-ahead",   "↑",  0, "#e0af68")
-        self._set_chip("chip-stashes", "📦", 0, "#7aa2f7")
-        self._set_chip("chip-stale",   "💀", 0, "#bb9af7")
+        self._set_chip("chip-dirty",   "◆ dirty",   0, "#ff5252")
+        self._set_chip("chip-behind",  "↓ behind",  0, "#ff5252")
+        self._set_chip("chip-ahead",   "↑ ahead",   0, "#ffb74d")
+        self._set_chip("chip-stashes", "⊞ stash",   0, "#4dd0e1")
+        self._set_chip("chip-stale",   "☠ stale",   0, "#e040fb")
+        chip: FleetChip = self.query_one("#chip-all", FleetChip)
+        chip.update("[dim #555568]· all[/]")
 
     def update_counters(self, repos: list[RepoInfo]) -> None:
         """Recompute all chips from the current repo list."""
@@ -101,15 +105,15 @@ class FleetStatus(Widget):
         total_stashes  = sum(r.stash_count for r in repos)
         n_stale        = sum(1 for r in repos if r.has_stale_branches)
 
-        self._set_chip("chip-dirty",   "🔴", n_dirty,       "#f7768e")
-        self._set_chip("chip-behind",  "↓",  total_behind,  "#f7768e")
-        self._set_chip("chip-ahead",   "↑",  n_ahead,       "#e0af68")
-        self._set_chip("chip-stashes", "📦", total_stashes, "#7aa2f7")
-        self._set_chip("chip-stale",   "💀", n_stale,       "#bb9af7")
+        self._set_chip("chip-dirty",   "◆ dirty",   n_dirty,       "#ff5252")
+        self._set_chip("chip-behind",  "↓ behind",  total_behind,  "#ff5252")
+        self._set_chip("chip-ahead",   "↑ ahead",   n_ahead,       "#ffb74d")
+        self._set_chip("chip-stashes", "⊞ stash",   total_stashes, "#4dd0e1")
+        self._set_chip("chip-stale",   "☠ stale",   n_stale,       "#e040fb")
 
-    def _set_chip(self, widget_id: str, icon: str, count: int, color: str) -> None:
+    def _set_chip(self, widget_id: str, label: str, count: int, color: str) -> None:
         chip: FleetChip = self.query_one(f"#{widget_id}", FleetChip)
         if count == 0:
-            chip.update(f"[dim #565f89]{icon} 0[/]")
+            chip.update(f"[dim #2a2a3a]{label}: 0[/]")
         else:
-            chip.update(f"[bold {color}]{icon} {count}[/]")
+            chip.update(f"[bold {color}]{label}: {count}[/]")

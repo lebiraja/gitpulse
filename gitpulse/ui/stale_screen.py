@@ -38,11 +38,11 @@ class DeleteConfirmModal(ModalScreen):
         width: 56;
         height: auto;
         padding: 1 2;
-        background: #1e2030;
-        border: thick #f7768e;
+        background: #1a1a24;
+        border: thick #ff5252;
     }
-    #dconf-title { color: #f7768e; text-style: bold; margin-bottom: 1; }
-    #dconf-info  { color: #e0af68; margin-bottom: 1; }
+    #dconf-title { color: #ff5252; text-style: bold; margin-bottom: 1; }
+    #dconf-info  { color: #ffb74d; margin-bottom: 1; }
     #dconf-input { width: 100%; margin-bottom: 1; }
     #dconf-btns  { layout: horizontal; width: 100%; height: 3; align: center middle; }
     """
@@ -101,14 +101,14 @@ class StaleScreen(ModalScreen):
     #stale-frame {
         width: 96%;
         height: 90%;
-        background: #1e2030;
-        border: thick #bb9af7;
+        background: #1a1a24;
+        border: thick #e040fb;
     }
     #stale-header {
         dock: top;
         height: 1;
-        background: #24283b;
-        color: #bb9af7;
+        background: #242430;
+        color: #e040fb;
         text-style: bold;
         padding: 0 1;
     }
@@ -116,10 +116,10 @@ class StaleScreen(ModalScreen):
     #stale-footer {
         dock: bottom;
         height: 1;
-        background: #1e2030;
-        color: #565f89;
+        background: #1a1a24;
+        color: #555568;
         padding: 0 1;
-        border-top: solid #3b4261;
+        border-top: solid #2a2a3a;
     }
     """
 
@@ -142,7 +142,7 @@ class StaleScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         with Container(id="stale-frame"):
-            yield Static(" 💀 Stale Branches", id="stale-header", markup=False)
+            yield Static(" ☠ Stale Branches", id="stale-header", markup=False)
             with TabbedContent(id="stale-tabs"):
                 for cat, label in [
                     ("stale",    f"Stale ({self._stale_weeks}w+)"),
@@ -170,7 +170,7 @@ class StaleScreen(ModalScreen):
 
     def _load_data(self) -> None:
         self.query_one("#stale-header", Static).update(
-            " 💀 Stale Branches  [dim #565f89]loading…[/]"
+            " ☠ Stale Branches  [dim #555568]loading…[/]"
         )
         self.run_worker(self._fetch_worker, thread=True, group="stale")
 
@@ -187,10 +187,10 @@ class StaleScreen(ModalScreen):
         if event.state == WorkerState.SUCCESS and event.worker.result is not None:
             self._categories = event.worker.result
             self._populate_tables()
-            self.query_one("#stale-header", Static).update(" 💀 Stale Branches")
+            self.query_one("#stale-header", Static).update(" ☠ Stale Branches")
         elif event.state == WorkerState.ERROR:
             self.query_one("#stale-header", Static).update(
-                f" 💀 Error: {event.worker.error}"
+                f" ☠ Error: {event.worker.error}"
             )
 
     def _populate_tables(self) -> None:
@@ -199,12 +199,12 @@ class StaleScreen(ModalScreen):
             table.clear()
             for b in sorted(branches, key=lambda x: x.age_days, reverse=True):
                 sel_key = (b.repo_name, b.name)
-                checkbox = "[bold #9ece6a]✓[/]" if sel_key in self._selected else "[ ]"
+                checkbox = "[bold #3ddc84]✓[/]" if sel_key in self._selected else "[ ]"
                 flags = []
-                if b.is_wip:            flags.append("[#e0af68]WIP[/]")
-                if b.is_merged_into_default: flags.append("[#9ece6a]merged[/]")
-                if b.is_current:        flags.append("[#7aa2f7]current[/]")
-                if not b.has_upstream:  flags.append("[dim]no-remote[/]")
+                if b.is_wip:                 flags.append("[#ffb74d]WIP[/]")
+                if b.is_merged_into_default: flags.append("[#3ddc84]merged[/]")
+                if b.is_current:             flags.append("[#ff2d4a]current[/]")
+                if not b.has_upstream:       flags.append("[dim]no-remote[/]")
                 flags_str = " ".join(flags) if flags else "[dim]—[/]"
                 age_str = f"{b.age_days}d"
                 msg = b.last_commit_msg[:40] + ("…" if len(b.last_commit_msg) > 40 else "")
@@ -256,7 +256,6 @@ class StaleScreen(ModalScreen):
         async def _after_confirm(confirmed: bool) -> None:
             if not confirmed:
                 return
-            # Collect BranchDetail objects for selected
             to_delete: list[BranchDetail] = []
             for cat_branches in self._categories.values():
                 for b in cat_branches:
@@ -274,7 +273,6 @@ class StaleScreen(ModalScreen):
 
             self._selected.clear()
             self._load_data()
-            self.app.post_message_no_wait = getattr(self.app, "post_message_no_wait", None)
 
         self.app.push_screen(DeleteConfirmModal(count=len(self._selected)), _after_confirm)
 

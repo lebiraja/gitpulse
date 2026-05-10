@@ -711,8 +711,8 @@ def get_file_tree(path: Path) -> "rich.tree.Tree":
     # Render the dict structure into a Rich Tree
     repo_name = path.name
     rich_tree = RichTree(
-        f"[bold #7aa2f7]📁 {repo_name}[/]",
-        guide_style="#3b4261",
+        f"[bold #ff2d4a]📁 {repo_name}[/]",
+        guide_style="#2a2a3a",
     )
 
     def build_tree(node: "RichTree", d: dict) -> None:
@@ -721,22 +721,22 @@ def get_file_tree(path: Path) -> "rich.tree.Tree":
         files = sorted(k for k, v in d.items() if v is None)
 
         for name in dirs:
-            branch = node.add(f"[bold #bb9af7]📂 {name}[/]")
+            branch = node.add(f"[bold #e040fb]📂 {name}[/]")
             build_tree(branch, d[name])
 
         for name in files:
             # Color-code by extension
             ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
             if ext in ("py", "js", "ts", "go", "rs", "c", "cpp", "java"):
-                label = f"[#9ece6a]  {name}[/]"
+                label = f"[#3ddc84]  {name}[/]"
             elif ext in ("md", "rst", "txt"):
-                label = f"[#e0af68]  {name}[/]"
+                label = f"[#ffb74d]  {name}[/]"
             elif ext in ("json", "yaml", "yml", "toml", "ini", "cfg", "env"):
-                label = f"[#7dcfff]  {name}[/]"
+                label = f"[#4dd0e1]  {name}[/]"
             elif ext in ("sh", "bash", "zsh"):
-                label = f"[#f7768e]  {name}[/]"
+                label = f"[#ff5252]  {name}[/]"
             else:
-                label = f"[#c0caf5]  {name}[/]"
+                label = f"[#d4d4dc]  {name}[/]"
             node.add(label)
 
     build_tree(rich_tree, root_dict)

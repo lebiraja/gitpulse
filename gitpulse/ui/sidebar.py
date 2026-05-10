@@ -31,13 +31,13 @@ def _make_badge(info: RepoInfo) -> str:
     """Build a Rich markup badge string with icon and optional file count."""
     count = info.modified_count
     if info.status == RepoStatus.CLEAN:
-        return "[bold white on #2d7d46] ✔ Clean [/]"
+        return "[bold #3ddc84 on #0f2a1a] ✔ Clean [/]"
     elif info.status == RepoStatus.MODIFIED:
-        label = f" ● Modified ({count}) " if count else " ● Modified "
-        return f"[bold #1a1b26 on #e0af68]{label}[/]"
+        label = f" ● {count} modified " if count else " ● Modified "
+        return f"[bold #ffb74d on #2a1e00]{label}[/]"
     else:  # UNTRACKED
-        label = f" ○ Untracked ({count}) " if count else " ○ Untracked "
-        return f"[bold white on #db4b4b]{label}[/]"
+        label = f" ○ {count} untracked " if count else " ○ Untracked "
+        return f"[bold #ff5252 on #2a0a0a]{label}[/]"
 
 
 # ---------------------------------------------------------------------------
@@ -49,12 +49,12 @@ _SPARK_CHARS = " ▁▂▃▄▅▆▇█"
 def _sparkline(activity: list[int]) -> str:
     """Build a 7-char sparkline from weekly commit counts (oldest→newest)."""
     if not activity or len(activity) < 7:
-        return "[dim #3b4261]▁▁▁▁▁▁▁[/]"
+        return "[dim #2a2a3a]▁▁▁▁▁▁▁[/]"
     mx = max(activity)
     if mx == 0:
-        return "[dim #3b4261]▁▁▁▁▁▁▁[/]"
+        return "[dim #2a2a3a]▁▁▁▁▁▁▁[/]"
     chars = "".join(_SPARK_CHARS[min(8, int(v / mx * 8))] for v in activity)
-    return f"[#7aa2f7]{chars}[/]"
+    return f"[#ff2d4a]{chars}[/]"
 
 
 # ---------------------------------------------------------------------------
@@ -88,24 +88,29 @@ class RepoListItem(ListItem):
 
         # Selection checkbox prefix
         if self._selected:
-            checkbox = "[bold #9ece6a][✓][/] "
+            checkbox = "[bold #3ddc84][✓][/] "
         else:
-            checkbox = "[dim #3b4261][ ][/] "
+            checkbox = "[dim #2a2a3a][ ][/] "
+
+        # Shorten path for display
+        path_str = str(info.path)
+        home = str(Path.home())
+        if path_str.startswith(home):
+            path_str = "~" + path_str[len(home):]
+        if len(path_str) > 38:
+            path_str = "…" + path_str[-37:]
 
         # Line 1: checkbox + repo name + badge
-        line1 = f"{checkbox}[bold #c0caf5]{info.name}[/]  {badge}"
+        line1 = f"{checkbox}[bold #d4d4dc]{info.name}[/]  {badge}"
         # Line 2: branch  |  relative time  |  sparkline
-        line2 = f"   [#bb9af7]⎇ {info.branch}[/]  [dim #565f89]⏱ {rel}[/]  {spark}"
+        line2 = f"   [#e040fb]⎇ {info.branch}[/]  [dim #555568]⏱ {rel}[/]  {spark}"
         # Line 3: truncated last commit message for quick context
         commit_msg = info.last_commit_msg
         if len(commit_msg) > 36:
             commit_msg = commit_msg[:35] + "…"
-        line3 = f"   [dim #565f89]💬 {commit_msg}[/]" if commit_msg else "   [dim #3b4261]no commits[/]"
+        line3 = f"   [dim #555568]💬 {commit_msg}[/]" if commit_msg else "   [dim #2a2a3a]no commits[/]"
         # Line 4: truncated repo path for disambiguation
-        path_str = str(info.path)
-        if len(path_str) > 38:
-            path_str = "…" + path_str[-37:]
-        line4 = f"   [dim #3b4261]{path_str}[/]"
+        line4 = f"   [dim #2a2a3a]{path_str}[/]"
 
         yield Static(f"{line1}\n{line2}\n{line3}\n{line4}", markup=True)
 
@@ -157,45 +162,33 @@ class RepoSidebar(Static):
             self._selected.discard(path)
         else:
             self._selected.add(path)
-        self._post_selection_changed()
+        self.post_message(self.SelectionChanged(
+            count=len(self._selected),
+            paths=list(self._selected),
+        ))
 
     def select_all_visible(self) -> None:
         for r in self._current_repos:
             self._selected.add(r.path)
-        self._post_selection_changed()
+        self.post_message(self.SelectionChanged(
+            count=len(self._selected),
+            paths=list(self._selected),
+        ))
         self.populate(self._current_repos)
 
     def clear_selection(self) -> None:
         self._selected.clear()
-        self._post_selection_changed()
+        self.post_message(self.SelectionChanged(count=0, paths=[]))
         self.populate(self._current_repos)
 
     def selected_repos(self) -> list[RepoInfo]:
         return [r for r in self._current_repos if r.path in self._selected]
 
-    def _post_selection_changed(self) -> None:
-        self.post_message(self.SelectionChanged(
-            count=len(self._selected),
-            paths=list(self._selected),
-        ))
-        # Update the header to show selection count
-        self._update_selection_indicator()
-
-    def _update_selection_indicator(self) -> None:
-        try:
-            title: Static = self.query_one("#sidebar-title", Static)
-            sel = len(self._selected)
-            if sel > 0:
-                # Append selection count to current title markup — regenerate
-                pass  # handled in update_header when called after populate
-        except Exception:
-            pass
-
     # ── Compose ─────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "⚡ [bold #7aa2f7]GitPulse[/]",
+            "⚡ [bold #ff2d4a]GitPulse[/]",
             id="sidebar-title",
             markup=True,
         )
@@ -218,23 +211,23 @@ class RepoSidebar(Static):
         """
         title: Static = self.query_one("#sidebar-title", Static)
         if scanning:
-            title.update("⚡ [bold #7aa2f7]GitPulse[/]  [dim #565f89]scanning…[/]")
+            title.update("⚡ [bold #ff2d4a]GitPulse[/]  [dim #555568]scanning…[/]")
             return
         count_str = (
-            f"[dim #565f89]{count} repo{'s' if count != 1 else ''}[/]"
+            f"[dim #555568]{count} repo{'s' if count != 1 else ''}[/]"
             if count else ""
         )
         if live is True:
-            live_str = "  [bold #9ece6a]●live[/]"
+            live_str = "  [bold #3ddc84]●live[/]"
         elif live is False:
-            live_str = "  [dim #565f89]○paused[/]"
+            live_str = "  [dim #555568]○paused[/]"
         else:
             live_str = ""
 
         sel = len(self._selected)
-        sel_str = f"  [bold #e0af68][{sel} sel][/]" if sel > 0 else ""
+        sel_str = f"  [bold #ffb74d][{sel} sel][/]" if sel > 0 else ""
 
-        title.update(f"⚡ [bold #7aa2f7]GitPulse[/]{live_str}  {count_str}{sel_str}")
+        title.update(f"⚡ [bold #ff2d4a]GitPulse[/]{live_str}  {count_str}{sel_str}")
 
     def populate(self, repos: list[RepoInfo]) -> None:
         """Clear and re-populate the repo list."""
@@ -245,7 +238,7 @@ class RepoSidebar(Static):
         if not repos:
             from textual.widgets import ListItem as _LI
             list_view.append(_LI(Static(
-                "[dim italic #565f89]\n  📂  No repositories found\n"
+                "[dim italic #555568]\n  📂  No repositories found\n"
                 "      Try a different root or\n"
                 "      press r to rescan\n[/]",
                 markup=True,
