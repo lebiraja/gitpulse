@@ -39,19 +39,19 @@ class CommandPaletteModal(ModalScreen):
         height: auto;
         max-height: 24;
         padding: 1 2;
-        background: #1e2030;
-        border: thick #7aa2f7;
+        background: #1a1a24;
+        border: thick #ff2d4a;
     }
     #palette-title {
         text-style: bold;
-        color: #7aa2f7;
+        color: #ff2d4a;
         margin-bottom: 1;
         text-align: center;
         width: 100%;
         height: 1;
     }
     #palette-scope {
-        color: #e0af68;
+        color: #ffb74d;
         margin-bottom: 1;
         width: 100%;
         height: 1;
@@ -93,7 +93,7 @@ class CommandPaletteModal(ModalScreen):
         lv.clear()
         for key, label, desc in actions:
             lv.append(ListItem(
-                Static(f"[bold #9ece6a]{label}[/]  [dim #565f89]{desc}[/]", markup=True),
+                Static(f"[bold #3ddc84]{label}[/]  [dim #555568]{desc}[/]", markup=True),
                 id=f"action-{key}",
             ))
         if actions:
@@ -120,7 +120,6 @@ class CommandPaletteModal(ModalScreen):
         lv: ListView = self.query_one("#palette-list", ListView)
         item = lv.highlighted_child
         if item is None and self._filtered:
-            # If nothing highlighted but there's a match, pick first
             self._dispatch(self._filtered[0][0])
             return
         if item is not None and item.id and item.id.startswith("action-"):

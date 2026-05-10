@@ -51,23 +51,23 @@ class DigestScreen(ModalScreen):
     #digest-frame {
         width: 95%;
         height: 90%;
-        background: #1e2030;
-        border: thick #7aa2f7;
+        background: #1a1a24;
+        border: thick #ff2d4a;
     }
     #digest-header {
         dock: top;
         height: 3;
-        background: #24283b;
-        color: #7aa2f7;
+        background: #242430;
+        color: #ff2d4a;
         text-style: bold;
         padding: 0 2;
-        border-bottom: heavy #3b4261;
+        border-bottom: heavy #2a2a3a;
         layout: horizontal;
         align: left middle;
     }
     #digest-window-label {
         width: auto;
-        color: #bb9af7;
+        color: #e040fb;
         margin-left: 2;
     }
     #digest-scroll {
@@ -81,10 +81,10 @@ class DigestScreen(ModalScreen):
     #digest-footer {
         dock: bottom;
         height: 1;
-        background: #1e2030;
-        color: #565f89;
+        background: #1a1a24;
+        color: #555568;
         padding: 0 1;
-        border-top: solid #3b4261;
+        border-top: solid #2a2a3a;
     }
     """
 
@@ -123,7 +123,7 @@ class DigestScreen(ModalScreen):
 
     def _load_digest(self) -> None:
         label: Static = self.query_one("#digest-window-label", Static)
-        label.update(f"[#bb9af7]window: {self._window}[/]")
+        label.update(f"[#e040fb]window: {self._window}[/]")
 
         body: Static = self.query_one("#digest-body", Static)
         body.update("[dim italic]Computing digest…[/]")
@@ -131,7 +131,7 @@ class DigestScreen(ModalScreen):
         try:
             since_ts = parse_since(self._window)
         except ValueError as e:
-            body.update(f"[bold #f7768e]Error: {e}[/]")
+            body.update(f"[bold #ff5252]Error: {e}[/]")
             return
 
         # Run in a worker so we don't block the UI
@@ -148,7 +148,7 @@ class DigestScreen(ModalScreen):
             self._render_digest()
         elif event.state == WorkerState.ERROR:
             body: Static = self.query_one("#digest-body", Static)
-            body.update(f"[bold #f7768e]Error building digest: {event.worker.error}[/]")
+            body.update(f"[bold #ff5252]Error building digest: {event.worker.error}[/]")
 
     def _render_digest(self) -> None:
         d = self._digest
@@ -160,34 +160,34 @@ class DigestScreen(ModalScreen):
         if d.total_commits == 0:
             body.update(
                 "[dim italic]  No commits found for this window and author pattern.[/]\n"
-                "[dim #565f89]  Tip: configure author emails in ~/.config/gitpulse/config.toml[/]"
+                "[dim #555568]  Tip: configure author emails in ~/.config/gitpulse/config.toml[/]"
             )
             return
 
         lines: list[str] = []
         since_str = datetime.fromtimestamp(d.since_ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
         lines.append(
-            f"[bold #7aa2f7]{d.total_commits}[/] commits across "
-            f"[bold #9ece6a]{d.repos_active}[/] repos  "
-            f"[#9ece6a]+{d.total_insertions}[/] [#f7768e]-{d.total_deletions}[/] lines  "
+            f"[bold #ff2d4a]{d.total_commits}[/] commits across "
+            f"[bold #3ddc84]{d.repos_active}[/] repos  "
+            f"[#3ddc84]+{d.total_insertions}[/] [#ff5252]-{d.total_deletions}[/] lines  "
             f"[dim]since {since_str} UTC[/]"
         )
-        lines.append("[dim #3b4261]─" * 60 + "[/]")
+        lines.append("[dim #2a2a3a]─" * 60 + "[/]")
 
         for rd in d.by_repo:
             lines.append(
-                f"\n[bold #bb9af7]📁 {rd.repo.name}[/]  "
+                f"\n[bold #e040fb]📁 {rd.repo.name}[/]  "
                 f"[dim]{len(rd.commits)} commit{'s' if len(rd.commits) != 1 else ''}  "
-                f"[#9ece6a]+{rd.insertions}[/]"
-                f" [#f7768e]-{rd.deletions}[/][/dim]"
+                f"[#3ddc84]+{rd.insertions}[/]"
+                f" [#ff5252]-{rd.deletions}[/][/dim]"
             )
             for c in rd.commits:
                 rel = relative_time(c.ts)
-                stats = f"[#9ece6a]+{c.insertions}[/] [#f7768e]-{c.deletions}[/]" if (c.insertions or c.deletions) else ""
+                stats = f"[#3ddc84]+{c.insertions}[/] [#ff5252]-{c.deletions}[/]" if (c.insertions or c.deletions) else ""
                 msg = c.message[:70]
                 lines.append(
-                    f"  [dim #7aa2f7]{c.short_hash}[/]  {msg}"
-                    f"  {stats}  [dim #565f89]{rel}[/]"
+                    f"  [dim #ff2d4a]{c.short_hash}[/]  {msg}"
+                    f"  {stats}  [dim #555568]{rel}[/]"
                 )
 
         body.update("\n".join(lines))
