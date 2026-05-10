@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     # Prevent infinite loop if the commit is from the bot itself
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     
