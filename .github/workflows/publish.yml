@@ -52,6 +52,13 @@ jobs:
         run: |
           git tag -a "v${{ env.NEW_VERSION }}" -m "v${{ env.NEW_VERSION }}"
           git push origin "v${{ env.NEW_VERSION }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ env.NEW_VERSION }}"
+          name: "v${{ env.NEW_VERSION }}"
+          generate_release_notes: true
           
       - name: Build package
         run: python -m build
