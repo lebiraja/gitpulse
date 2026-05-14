@@ -47,6 +47,11 @@ jobs:
           git add pyproject.toml gitpulse/utils.py
           git commit -m "chore: bump version to ${{ env.NEW_VERSION }} [skip ci]"
           git push origin main
+
+      - name: Create and push tag
+        run: |
+          git tag -a "v${{ env.NEW_VERSION }}" -m "v${{ env.NEW_VERSION }}"
+          git push origin "v${{ env.NEW_VERSION }}"
           
       - name: Build package
         run: python -m build
