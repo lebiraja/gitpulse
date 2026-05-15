@@ -74,6 +74,19 @@ _ICON_UNSTAGED  = "✏️ "
 _ICON_UNTRACKED = "❓"
 _ICON_STASH     = "📦"
 
+# Module-level constant — avoids rebuilding this dict on every recursive
+# _build() call during Tree tab loading.
+_FILE_ICONS: dict[str, str] = {
+    "py": "🐍", "js": "🟨", "ts": "🟦", "go": "🐹",
+    "rs": "⚙️", "c": "🔧", "cpp": "🔧", "java": "☕",
+    "md": "📝", "rst": "📝", "txt": "📝",
+    "json": "📋", "yaml": "📋", "yml": "📋",
+    "toml": "📋", "ini": "📋", "cfg": "📋", "env": "🔒",
+    "sh": "📜", "bash": "📜", "zsh": "📜",
+    "html": "🌐", "css": "🎨", "tcss": "🎨",
+    "sql": "🗄️",
+}
+
 
 # ===================================================================
 # Modal: Commit dialog
@@ -1008,17 +1021,6 @@ class MainPanel(Widget):
                 _build(child, d[name], f"{prefix}{name}/")
             for name in files:
                 ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
-                # Language-specific file icons for visual identification
-                _FILE_ICONS = {
-                    "py": "🐍", "js": "🟨", "ts": "🟦", "go": "🐹",
-                    "rs": "⚙️", "c": "🔧", "cpp": "🔧", "java": "☕",
-                    "md": "📝", "rst": "📝", "txt": "📝",
-                    "json": "📋", "yaml": "📋", "yml": "📋",
-                    "toml": "📋", "ini": "📋", "cfg": "📋", "env": "🔒",
-                    "sh": "📜", "bash": "📜", "zsh": "📜",
-                    "html": "🌐", "css": "🎨", "tcss": "🎨",
-                    "sql": "🗄️",
-                }
                 icon = _FILE_ICONS.get(ext, "📄")
                 if ext in ("py", "js", "ts", "go", "rs", "c", "cpp", "java"):
                     label = f"[#3ddc84]{icon} {name}[/]"
@@ -1182,34 +1184,60 @@ class MainPanel(Widget):
         self.post_message(self.ReloadRequested())
 
     def action_fetch(self) -> None:
-        """Fetch from all remotes (f key in Remotes tab)."""
+        """Fetch from all remotes (f key in Remotes tab) — runs in background."""
         if self._current_repo is None:
             return
         self.app.notify("Fetching…", timeout=2)
-        result = git_fetch(self._current_repo)
-        self.app.notify(result, timeout=4)
-        self._reload_tab("tab-remotes")
+        path = self._current_repo
+        self.run_worker(
+            lambda: ("fetch", git_fetch(path)),
+            thread=True, group="git_op", exclusive=False,
+        )
 
     def action_pull(self) -> None:
-        """Pull from the tracking branch (p key in Remotes tab)."""
+        """Pull from the tracking branch (p key in Remotes tab) — runs in background."""
         if self._current_repo is None:
             return
         self.app.notify("Pulling…", timeout=2)
-        result = git_pull(self._current_repo)
-        self.app.notify(result, timeout=5)
-        for tab in ("tab-status", "tab-commits", "tab-remotes"):
-            self._loaded_tabs.discard(tab)
-        self._load_tab(self._active_tab())
-        self.post_message(self.ReloadRequested())
+        path = self._current_repo
+        self.run_worker(
+            lambda: ("pull", git_pull(path)),
+            thread=True, group="git_op", exclusive=False,
+        )
 
     def action_push(self) -> None:
-        """Push to the tracking branch (P key in Remotes tab)."""
+        """Push to the tracking branch (P key in Remotes tab) — runs in background."""
         if self._current_repo is None:
             return
         self.app.notify("Pushing…", timeout=2)
-        result = git_push(self._current_repo)
-        self.app.notify(result, timeout=5)
-        self._reload_tab("tab-remotes")
+        path = self._current_repo
+        self.run_worker(
+            lambda: ("push", git_push(path)),
+            thread=True, group="git_op", exclusive=False,
+        )
+
+    def on_worker_state_changed(self, event) -> None:
+        """Handle results from background git_op workers (fetch/pull/push)."""
+        from textual.worker import WorkerState
+        group = getattr(event.worker, "group", None)
+        if group != "git_op":
+            return
+        event.stop()  # Don't let it bubble to the App's handler
+        if event.state == WorkerState.SUCCESS and event.worker.result is not None:
+            op, result_msg = event.worker.result
+            self.app.notify(result_msg, timeout=5)
+            if op in ("pull", "fetch"):
+                for tab in ("tab-status", "tab-commits", "tab-remotes"):
+                    self._loaded_tabs.discard(tab)
+            else:
+                self._loaded_tabs.discard("tab-remotes")
+            self._load_tab(self._active_tab())
+            self.post_message(self.ReloadRequested())
+        elif event.state == WorkerState.ERROR:
+            self.app.notify(
+                f"Git operation failed: {event.worker.error}",
+                severity="error", timeout=5,
+            )
 
 
     def _delete_selected_branch(self) -> None:

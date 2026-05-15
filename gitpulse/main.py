@@ -97,7 +97,8 @@ class GitPulseApp(App):
         self._scanning = False          # Guard against concurrent scans
         self._watch_enabled = watch     # Whether watch mode is on
         self._watch_paused = False      # Toggled by 'w' key
-        self._signatures: dict = {}     # path → (HEAD mtime, index mtime, refs mtime)
+        self._signatures: dict = {}     # path → (HEAD mtime, index mtime, refs mtime, packed-refs mtime)
+        self._fleet_category: str = ""  # Active fleet-filter category ("" = none)
 
     # -----------------------------------------------------------------
     # Layout
@@ -195,8 +196,12 @@ class GitPulseApp(App):
 
     def _dispatch_bulk(self, action_key: str, repos: list) -> None:
         """Fan out a bulk git operation over repos using a thread pool worker."""
-        from gitpulse.git_ops import git_fetch, git_pull, git_push, git_gc, git_remote_prune, git_clean_dry, get_repo_info
-        from gitpulse.parallel import run_parallel
+        try:
+            from gitpulse.git_ops import git_fetch, git_pull, git_push, git_gc, git_remote_prune, git_clean_dry, get_repo_info
+            from gitpulse.parallel import run_parallel
+        except ImportError:
+            from git_ops import git_fetch, git_pull, git_push, git_gc, git_remote_prune, git_clean_dry, get_repo_info  # type: ignore[no-redef]
+            from parallel import run_parallel  # type: ignore[no-redef]
 
         _ops = {
             "fetch":   lambda r: git_fetch(r.path),
@@ -287,6 +292,18 @@ class GitPulseApp(App):
                 self._refresh_single_repo(updated)
                 return
 
+            if group == "branch_switch":
+                # Result is (switch_message, updated_RepoInfo)
+                switch_msg, updated_info = event.worker.result
+                self.notify(switch_msg, timeout=3)
+                self._refresh_single_repo(updated_info)
+                self._start_scan()
+                return
+
+            if group not in (None, "scan"):
+                # Unknown group (e.g. git_op owned by MainPanel) — ignore here.
+                return
+
             # Full scan result
             self._scanning = False
             infos: list[RepoInfo] = event.worker.result
@@ -366,20 +383,18 @@ class GitPulseApp(App):
         main.load_repo(repo_info.path, repo_info)
 
     def _apply_filter(self, query: str) -> None:
-        """Filter the repo list by name, re-populate sidebar."""
+        """Filter the repo list by name, preserving any active fleet filter."""
         q = query.strip().lower()
-        if q:
-            self.repos = [r for r in self._all_repos if q in r.name.lower()]
-        else:
-            self.repos = list(self._all_repos)
+        base = self._fleet_filtered_repos()
+        self.repos = [r for r in base if q in r.name.lower()] if q else list(base)
 
         sidebar: RepoSidebar = self.query_one("#sidebar-container", RepoSidebar)
         sidebar.populate(self.repos)
         if self.repos:
             self._select_repo(self.repos[0])
 
-    def _apply_fleet_filter(self, category: str) -> None:
-        """Filter sidebar to repos matching a fleet-status category."""
+    def _fleet_filtered_repos(self) -> list[RepoInfo]:
+        """Return _all_repos filtered by the current fleet category (if any)."""
         from gitpulse.git_ops import RepoStatus  # avoid circular at module level
         _predicates = {
             "dirty":   lambda r: r.status != RepoStatus.CLEAN,
@@ -388,14 +403,21 @@ class GitPulseApp(App):
             "stashes": lambda r: r.stash_count > 0,
             "stale":   lambda r: r.has_stale_branches,
         }
-        pred = _predicates.get(category)
+        pred = _predicates.get(self._fleet_category)
         if pred is None:
-            self.repos = list(self._all_repos)
-        else:
-            self.repos = [r for r in self._all_repos if pred(r)]
+            return list(self._all_repos)
+        return [r for r in self._all_repos if pred(r)]
+
+    def _apply_fleet_filter(self, category: str) -> None:
+        """Filter sidebar to repos matching a fleet-status category and highlight chip."""
+        self._fleet_category = category
+        self.repos = self._fleet_filtered_repos()
 
         sidebar: RepoSidebar = self.query_one("#sidebar-container", RepoSidebar)
         sidebar.populate(self.repos)
+
+        fleet: FleetStatus = self.query_one("#fleet-status", FleetStatus)
+        fleet.set_active_filter(category)
 
         if self.repos:
             self._select_repo(self.repos[0])
@@ -429,23 +451,20 @@ class GitPulseApp(App):
         if self._selected_repo is None:
             return
 
-        result = switch_branch(self._selected_repo.path, message.branch_name)
-        self.notify(result, timeout=3)
+        path = self._selected_repo.path
+        branch_name = message.branch_name
 
-        # Refresh the selected repo's data
-        updated_info = get_repo_info(self._selected_repo.path)
-        self._select_repo(updated_info)
+        def _do_switch() -> tuple[str, RepoInfo]:
+            msg = switch_branch(path, branch_name)
+            info = get_repo_info(path)
+            return msg, info
 
-        # Also kick off a background rescan to update the sidebar
-        self._start_scan()
+        self.run_worker(_do_switch, thread=True, group="branch_switch", exclusive=False)
 
     def on_main_panel_reload_requested(self, message: MainPanel.ReloadRequested) -> None:
-        """Fired after a commit or branch operation — refresh sidebar entry."""
+        """Fired after a commit or branch operation — rescan to update sidebar."""
         if self._selected_repo is None:
             return
-        updated_info = get_repo_info(self._selected_repo.path)
-        self._selected_repo = updated_info
-        # Rescan to update sidebar badges/timestamps
         self._start_scan()
 
 
@@ -462,8 +481,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--root",
         type=str,
-        default=".",
-        help="Root directory to scan for git repos (default: current directory)",
+        default=None,
+        help="Root directory to scan for git repos (default: first entry in config scan.roots, or current directory)",
     )
     parser.add_argument(
         "--commits",
@@ -518,17 +537,21 @@ def main() -> None:
     """Entry point — called by both `python main.py` and the `gitpulse` command."""
     args = parse_args()
 
-    # Load config (custom path takes precedence)
+    # Load config first so scan.roots can influence the default root.
     if args.config:
         _config.load(Path(args.config))
+    cfg = _config.get()
 
-    root = Path(args.root).expanduser().resolve()
+    if args.root is not None:
+        root = Path(args.root).expanduser().resolve()
+    elif cfg.scan.roots:
+        root = Path(cfg.scan.roots[0]).expanduser().resolve()
+    else:
+        root = Path(".").resolve()
 
     if not root.is_dir():
         print(f"Error: '{root}' is not a valid directory.", file=sys.stderr)
         sys.exit(1)
-
-    cfg = _config.get()
 
     if args.digest:
         # CLI digest mode — no TUI

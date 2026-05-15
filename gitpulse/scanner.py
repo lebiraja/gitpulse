@@ -44,7 +44,8 @@ def scan_repos(root: Path) -> list[Path]:
 
     repos: list[Path] = []
     _walk(root, repos)
-    repos.sort(key=lambda p: p.name.lower())
+    # No alphabetical sort here — the caller (_scan_worker) re-sorts by
+    # commit timestamp, making a pre-sort wasted work.
     return repos
 
 

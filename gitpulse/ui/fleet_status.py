@@ -79,6 +79,10 @@ class FleetStatus(Widget):
             super().__init__()
             self.category = category
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._active_filter: str = ""
+
     def compose(self) -> ComposeResult:
         yield Static("fleet:", id="fleet-label", markup=False)
         yield FleetChip("dirty",   id="chip-dirty")
@@ -110,6 +114,21 @@ class FleetStatus(Widget):
         self._set_chip("chip-ahead",   "↑ ahead",   n_ahead,       "#ffb74d")
         self._set_chip("chip-stashes", "⊞ stash",   total_stashes, "#4dd0e1")
         self._set_chip("chip-stale",   "☠ stale",   n_stale,       "#e040fb")
+
+    def set_active_filter(self, category: str) -> None:
+        """Highlight the active filter chip and dim the rest."""
+        self._active_filter = category
+        chip_map = {
+            "dirty": "chip-dirty", "behind": "chip-behind",
+            "ahead": "chip-ahead", "stashes": "chip-stashes",
+            "stale": "chip-stale", "all": "chip-all",
+        }
+        for cat, cid in chip_map.items():
+            chip: FleetChip = self.query_one(f"#{cid}", FleetChip)
+            if cat == category and category not in ("all", ""):
+                chip.add_class("-active-filter")
+            else:
+                chip.remove_class("-active-filter")
 
     def _set_chip(self, widget_id: str, label: str, count: int, color: str) -> None:
         chip: FleetChip = self.query_one(f"#{widget_id}", FleetChip)

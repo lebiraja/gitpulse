@@ -82,6 +82,7 @@ class AuthorCommit:
     insertions: int = 0
     deletions: int = 0
     files_changed: int = 0
+    full_hash: str = ""  # full 40-char SHA used for deduplication
 
 
 @dataclass
@@ -201,14 +202,23 @@ def get_repo_info(path: Path) -> RepoInfo:
             except Exception:
                 contributor_count = 0
 
-            # Commit activity: commits per week for the last 7 weeks (sparkline buckets)
+            # Commit activity: commits per week for the last 7 weeks (sparkline).
+            # Use a fast plumbing command (timestamps only) instead of loading
+            # full commit objects, which is ~10x faster on large repos.
             try:
                 now_ts = time.time()
-                for c in repo.iter_commits(max_count=200):
-                    age_days = (now_ts - float(c.committed_date)) / 86400
-                    week_idx = int(age_days // 7)
-                    if 0 <= week_idx < 7:
-                        activity[week_idx] += 1
+                cutoff = int(now_ts - 7 * 7 * 86400)
+                log_out = repo.git.log(
+                    "--format=%ct", f"--after={cutoff}", "HEAD",
+                )
+                for ts_str in log_out.splitlines():
+                    try:
+                        age_days = (now_ts - float(ts_str.strip())) / 86400
+                        week_idx = int(age_days // 7)
+                        if 0 <= week_idx < 7:
+                            activity[week_idx] += 1
+                    except ValueError:
+                        pass
                 activity.reverse()  # oldest week first
             except Exception:
                 activity = [0] * 7
@@ -257,7 +267,7 @@ def get_repo_info(path: Path) -> RepoInfo:
         except Exception:
             pass
 
-    except (InvalidGitRepositoryError, Exception):
+    except Exception:  # InvalidGitRepositoryError, PermissionError, etc.
         branch = "unknown"
         status = RepoStatus.CLEAN
         mod_count = 0
@@ -355,18 +365,20 @@ def get_commits(path: Path, n: int = 10) -> list[CommitInfo]:
 
 def get_diff(path: Path) -> str:
     """
-    Return the uncommitted diff (working tree vs index) as a string.
+    Return the uncommitted diff as a string.
+
+    Combines staged (cached) and unstaged changes so both are visible when
+    a file has entries in both states.  Staged changes are shown first.
     """
     repo = _open_repo(path)
 
     try:
-        diff_text = repo.git.diff()
-        if not diff_text:
-            staged_diff = repo.git.diff("--cached")
-            if staged_diff:
-                return staged_diff
+        staged_diff = repo.git.diff("--cached")
+        unstaged_diff = repo.git.diff()
+        parts = [p for p in (staged_diff, unstaged_diff) if p]
+        if not parts:
             return "No uncommitted changes."
-        return diff_text
+        return "\n".join(parts)
     except Exception as exc:
         return f"Error getting diff: {exc}"
 
@@ -471,40 +483,40 @@ def get_tags(path: Path, n: int = 15) -> list[TagInfo]:
     Return the most recent `n` tags, sorted by date descending.
     """
     repo = _open_repo(path)
-    tags: list[TagInfo] = []
+    # Store (timestamp, TagInfo) so we sort by the raw float, not the
+    # formatted string (which would put empty-date error entries at the top).
+    tagged: list[tuple[float, TagInfo]] = []
 
     try:
         for tag_ref in repo.tags:
             try:
-                # Annotated tag
                 tag_obj = tag_ref.tag
                 if tag_obj:
-                    ts = tag_obj.tagged_date
+                    ts = float(tag_obj.tagged_date)
                     date_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
                     message = (tag_obj.message or "").strip().split("\n")[0]
                     tagger = str(tag_obj.tagger) if tag_obj.tagger else ""
                 else:
                     # Lightweight tag — use commit date
                     commit = tag_ref.commit
-                    ts = commit.committed_date
+                    ts = float(commit.committed_date)
                     date_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
                     message = commit.message.strip().split("\n")[0]
                     tagger = str(commit.author)
 
-                tags.append(TagInfo(
+                tagged.append((ts, TagInfo(
                     name=tag_ref.name,
                     date=date_str,
                     message=message,
                     tagger=tagger,
-                ))
+                )))
             except Exception:
-                tags.append(TagInfo(name=tag_ref.name, date="", message="", tagger=""))
+                tagged.append((0.0, TagInfo(name=tag_ref.name, date="", message="", tagger="")))
     except Exception:
         pass
 
-    # Sort by date descending, take first n
-    tags.sort(key=lambda t: t.date, reverse=True)
-    return tags[:n]
+    tagged.sort(key=lambda x: x[0], reverse=True)
+    return [t for _, t in tagged[:n]]
 
 
 def stage_files(path: Path, files: list[str]) -> str:
@@ -562,11 +574,13 @@ def commit_changes(path: Path, message: str) -> str:
     try:
         if not message.strip():
             return "Error: commit message cannot be empty"
-        # Check there is something staged
+        # Check there is something staged.
+        # On a repo with no commits yet, diff("HEAD") raises — fall back to
+        # checking the raw index entries so the very first commit is not blocked.
         try:
             staged = list(repo.index.diff("HEAD"))
         except Exception:
-            staged = []
+            staged = list(repo.index.entries.keys())
         if not staged:
             return "Nothing staged to commit. Stage files first."
         commit_obj = repo.index.commit(message.strip())
@@ -1049,6 +1063,7 @@ def get_author_commits(
 
             commits.append(AuthorCommit(
                 short_hash=full_hash[:7],
+                full_hash=full_hash,
                 ts=ts,
                 message=subject.strip(),
                 insertions=insertions,

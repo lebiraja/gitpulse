@@ -77,12 +77,13 @@ def _collect_for_repo(
     if not all_commits:
         return None
 
-    # De-duplicate by hash in case multiple patterns matched same commit
+    # De-duplicate by full hash (not short hash, which can collide in large repos)
     seen: set[str] = set()
     unique: list[AuthorCommit] = []
     for c in all_commits:
-        if c.short_hash not in seen:
-            seen.add(c.short_hash)
+        key = c.full_hash or c.short_hash  # full_hash preferred
+        if key not in seen:
+            seen.add(key)
             unique.append(c)
 
     unique.sort(key=lambda c: c.ts, reverse=True)

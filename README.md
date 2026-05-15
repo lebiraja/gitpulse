@@ -47,9 +47,9 @@ source ~/.zshrc   # or source ~/.bashrc
 ## Usage
 
 ```bash
-gitpulse                          # scans ~/projects (default)
+gitpulse                          # scans current directory (or scan.roots from config)
 gitpulse --root /path/to/repos   # scans a custom directory
-gitpulse --root .                 # scans current directory
+gitpulse --root .                 # scans current directory explicitly
 gitpulse --commits 20            # show 20 commits per repo (default: 10)
 gitpulse --version               # print version
 ```
