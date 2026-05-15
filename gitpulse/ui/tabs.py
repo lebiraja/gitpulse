@@ -74,6 +74,19 @@ _ICON_UNSTAGED  = "✏️ "
 _ICON_UNTRACKED = "❓"
 _ICON_STASH     = "📦"
 
+# Module-level constant — avoids rebuilding this dict on every recursive
+# _build() call during Tree tab loading.
+_FILE_ICONS: dict[str, str] = {
+    "py": "🐍", "js": "🟨", "ts": "🟦", "go": "🐹",
+    "rs": "⚙️", "c": "🔧", "cpp": "🔧", "java": "☕",
+    "md": "📝", "rst": "📝", "txt": "📝",
+    "json": "📋", "yaml": "📋", "yml": "📋",
+    "toml": "📋", "ini": "📋", "cfg": "📋", "env": "🔒",
+    "sh": "📜", "bash": "📜", "zsh": "📜",
+    "html": "🌐", "css": "🎨", "tcss": "🎨",
+    "sql": "🗄️",
+}
+
 
 # ===================================================================
 # Modal: Commit dialog
@@ -1008,17 +1021,6 @@ class MainPanel(Widget):
                 _build(child, d[name], f"{prefix}{name}/")
             for name in files:
                 ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
-                # Language-specific file icons for visual identification
-                _FILE_ICONS = {
-                    "py": "🐍", "js": "🟨", "ts": "🟦", "go": "🐹",
-                    "rs": "⚙️", "c": "🔧", "cpp": "🔧", "java": "☕",
-                    "md": "📝", "rst": "📝", "txt": "📝",
-                    "json": "📋", "yaml": "📋", "yml": "📋",
-                    "toml": "📋", "ini": "📋", "cfg": "📋", "env": "🔒",
-                    "sh": "📜", "bash": "📜", "zsh": "📜",
-                    "html": "🌐", "css": "🎨", "tcss": "🎨",
-                    "sql": "🗄️",
-                }
                 icon = _FILE_ICONS.get(ext, "📄")
                 if ext in ("py", "js", "ts", "go", "rs", "c", "cpp", "java"):
                     label = f"[#3ddc84]{icon} {name}[/]"

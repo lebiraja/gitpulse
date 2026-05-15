@@ -202,14 +202,23 @@ def get_repo_info(path: Path) -> RepoInfo:
             except Exception:
                 contributor_count = 0
 
-            # Commit activity: commits per week for the last 7 weeks (sparkline buckets)
+            # Commit activity: commits per week for the last 7 weeks (sparkline).
+            # Use a fast plumbing command (timestamps only) instead of loading
+            # full commit objects, which is ~10x faster on large repos.
             try:
                 now_ts = time.time()
-                for c in repo.iter_commits(max_count=200):
-                    age_days = (now_ts - float(c.committed_date)) / 86400
-                    week_idx = int(age_days // 7)
-                    if 0 <= week_idx < 7:
-                        activity[week_idx] += 1
+                cutoff = int(now_ts - 7 * 7 * 86400)
+                log_out = repo.git.log(
+                    "--format=%ct", f"--after={cutoff}", "HEAD",
+                )
+                for ts_str in log_out.splitlines():
+                    try:
+                        age_days = (now_ts - float(ts_str.strip())) / 86400
+                        week_idx = int(age_days // 7)
+                        if 0 <= week_idx < 7:
+                            activity[week_idx] += 1
+                    except ValueError:
+                        pass
                 activity.reverse()  # oldest week first
             except Exception:
                 activity = [0] * 7
