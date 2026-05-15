@@ -134,11 +134,14 @@ class DigestScreen(ModalScreen):
             body.update(f"[bold #ff5252]Error: {e}[/]")
             return
 
-        # Run in a worker so we don't block the UI
+        # Run in a worker so we don't block the UI.
+        # exclusive=True cancels any in-flight digest worker before starting
+        # a new one, preventing a race when the user switches windows rapidly.
         self.run_worker(
             lambda: build_digest(self._repos, since_ts, self._author_patterns),
             thread=True,
             group="digest",
+            exclusive=True,
         )
 
     def on_worker_state_changed(self, event) -> None:

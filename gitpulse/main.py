@@ -98,6 +98,7 @@ class GitPulseApp(App):
         self._watch_enabled = watch     # Whether watch mode is on
         self._watch_paused = False      # Toggled by 'w' key
         self._signatures: dict = {}     # path → (HEAD mtime, index mtime, refs mtime, packed-refs mtime)
+        self._fleet_category: str = ""  # Active fleet-filter category ("" = none)
 
     # -----------------------------------------------------------------
     # Layout
@@ -382,20 +383,18 @@ class GitPulseApp(App):
         main.load_repo(repo_info.path, repo_info)
 
     def _apply_filter(self, query: str) -> None:
-        """Filter the repo list by name, re-populate sidebar."""
+        """Filter the repo list by name, preserving any active fleet filter."""
         q = query.strip().lower()
-        if q:
-            self.repos = [r for r in self._all_repos if q in r.name.lower()]
-        else:
-            self.repos = list(self._all_repos)
+        base = self._fleet_filtered_repos()
+        self.repos = [r for r in base if q in r.name.lower()] if q else list(base)
 
         sidebar: RepoSidebar = self.query_one("#sidebar-container", RepoSidebar)
         sidebar.populate(self.repos)
         if self.repos:
             self._select_repo(self.repos[0])
 
-    def _apply_fleet_filter(self, category: str) -> None:
-        """Filter sidebar to repos matching a fleet-status category."""
+    def _fleet_filtered_repos(self) -> list[RepoInfo]:
+        """Return _all_repos filtered by the current fleet category (if any)."""
         from gitpulse.git_ops import RepoStatus  # avoid circular at module level
         _predicates = {
             "dirty":   lambda r: r.status != RepoStatus.CLEAN,
@@ -404,14 +403,21 @@ class GitPulseApp(App):
             "stashes": lambda r: r.stash_count > 0,
             "stale":   lambda r: r.has_stale_branches,
         }
-        pred = _predicates.get(category)
+        pred = _predicates.get(self._fleet_category)
         if pred is None:
-            self.repos = list(self._all_repos)
-        else:
-            self.repos = [r for r in self._all_repos if pred(r)]
+            return list(self._all_repos)
+        return [r for r in self._all_repos if pred(r)]
+
+    def _apply_fleet_filter(self, category: str) -> None:
+        """Filter sidebar to repos matching a fleet-status category and highlight chip."""
+        self._fleet_category = category
+        self.repos = self._fleet_filtered_repos()
 
         sidebar: RepoSidebar = self.query_one("#sidebar-container", RepoSidebar)
         sidebar.populate(self.repos)
+
+        fleet: FleetStatus = self.query_one("#fleet-status", FleetStatus)
+        fleet.set_active_filter(category)
 
         if self.repos:
             self._select_repo(self.repos[0])
