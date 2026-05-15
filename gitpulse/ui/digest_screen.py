@@ -26,13 +26,6 @@ except ImportError:
     from utils import parse_since, relative_time  # type: ignore
 
 
-_WINDOWS = {
-    "1": ("1d", "Today"),
-    "7": ("7d", "7 days"),
-    "3": ("30d", "30 days"),
-}
-
-
 class DigestScreen(ModalScreen):
     """Full-screen activity digest modal."""
 

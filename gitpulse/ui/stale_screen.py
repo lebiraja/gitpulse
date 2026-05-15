@@ -1,7 +1,7 @@
 """
 stale_screen.py — Stale-branch cleanup modal for GitPulse.
 
-Opened with 'B' to show branches across all repos matching stale/merged/WIP
+Opened with 'b' to show branches across all repos matching stale/merged/WIP
 criteria. Supports multi-select and bulk delete with a typed confirmation.
 """
 

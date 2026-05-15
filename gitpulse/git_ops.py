@@ -267,7 +267,7 @@ def get_repo_info(path: Path) -> RepoInfo:
         except Exception:
             pass
 
-    except (InvalidGitRepositoryError, Exception):
+    except Exception:  # InvalidGitRepositoryError, PermissionError, etc.
         branch = "unknown"
         status = RepoStatus.CLEAN
         mod_count = 0
