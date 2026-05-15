@@ -82,6 +82,7 @@ class AuthorCommit:
     insertions: int = 0
     deletions: int = 0
     files_changed: int = 0
+    full_hash: str = ""  # full 40-char SHA used for deduplication
 
 
 @dataclass
@@ -355,18 +356,20 @@ def get_commits(path: Path, n: int = 10) -> list[CommitInfo]:
 
 def get_diff(path: Path) -> str:
     """
-    Return the uncommitted diff (working tree vs index) as a string.
+    Return the uncommitted diff as a string.
+
+    Combines staged (cached) and unstaged changes so both are visible when
+    a file has entries in both states.  Staged changes are shown first.
     """
     repo = _open_repo(path)
 
     try:
-        diff_text = repo.git.diff()
-        if not diff_text:
-            staged_diff = repo.git.diff("--cached")
-            if staged_diff:
-                return staged_diff
+        staged_diff = repo.git.diff("--cached")
+        unstaged_diff = repo.git.diff()
+        parts = [p for p in (staged_diff, unstaged_diff) if p]
+        if not parts:
             return "No uncommitted changes."
-        return diff_text
+        return "\n".join(parts)
     except Exception as exc:
         return f"Error getting diff: {exc}"
 
@@ -471,40 +474,40 @@ def get_tags(path: Path, n: int = 15) -> list[TagInfo]:
     Return the most recent `n` tags, sorted by date descending.
     """
     repo = _open_repo(path)
-    tags: list[TagInfo] = []
+    # Store (timestamp, TagInfo) so we sort by the raw float, not the
+    # formatted string (which would put empty-date error entries at the top).
+    tagged: list[tuple[float, TagInfo]] = []
 
     try:
         for tag_ref in repo.tags:
             try:
-                # Annotated tag
                 tag_obj = tag_ref.tag
                 if tag_obj:
-                    ts = tag_obj.tagged_date
+                    ts = float(tag_obj.tagged_date)
                     date_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
                     message = (tag_obj.message or "").strip().split("\n")[0]
                     tagger = str(tag_obj.tagger) if tag_obj.tagger else ""
                 else:
                     # Lightweight tag — use commit date
                     commit = tag_ref.commit
-                    ts = commit.committed_date
+                    ts = float(commit.committed_date)
                     date_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
                     message = commit.message.strip().split("\n")[0]
                     tagger = str(commit.author)
 
-                tags.append(TagInfo(
+                tagged.append((ts, TagInfo(
                     name=tag_ref.name,
                     date=date_str,
                     message=message,
                     tagger=tagger,
-                ))
+                )))
             except Exception:
-                tags.append(TagInfo(name=tag_ref.name, date="", message="", tagger=""))
+                tagged.append((0.0, TagInfo(name=tag_ref.name, date="", message="", tagger="")))
     except Exception:
         pass
 
-    # Sort by date descending, take first n
-    tags.sort(key=lambda t: t.date, reverse=True)
-    return tags[:n]
+    tagged.sort(key=lambda x: x[0], reverse=True)
+    return [t for _, t in tagged[:n]]
 
 
 def stage_files(path: Path, files: list[str]) -> str:
@@ -1051,6 +1054,7 @@ def get_author_commits(
 
             commits.append(AuthorCommit(
                 short_hash=full_hash[:7],
+                full_hash=full_hash,
                 ts=ts,
                 message=subject.strip(),
                 insertions=insertions,

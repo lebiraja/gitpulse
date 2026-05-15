@@ -97,7 +97,7 @@ class GitPulseApp(App):
         self._scanning = False          # Guard against concurrent scans
         self._watch_enabled = watch     # Whether watch mode is on
         self._watch_paused = False      # Toggled by 'w' key
-        self._signatures: dict = {}     # path → (HEAD mtime, index mtime, refs mtime)
+        self._signatures: dict = {}     # path → (HEAD mtime, index mtime, refs mtime, packed-refs mtime)
 
     # -----------------------------------------------------------------
     # Layout
@@ -475,8 +475,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--root",
         type=str,
-        default=".",
-        help="Root directory to scan for git repos (default: current directory)",
+        default=None,
+        help="Root directory to scan for git repos (default: first entry in config scan.roots, or current directory)",
     )
     parser.add_argument(
         "--commits",
@@ -531,17 +531,21 @@ def main() -> None:
     """Entry point — called by both `python main.py` and the `gitpulse` command."""
     args = parse_args()
 
-    # Load config (custom path takes precedence)
+    # Load config first so scan.roots can influence the default root.
     if args.config:
         _config.load(Path(args.config))
+    cfg = _config.get()
 
-    root = Path(args.root).expanduser().resolve()
+    if args.root is not None:
+        root = Path(args.root).expanduser().resolve()
+    elif cfg.scan.roots:
+        root = Path(cfg.scan.roots[0]).expanduser().resolve()
+    else:
+        root = Path(".").resolve()
 
     if not root.is_dir():
         print(f"Error: '{root}' is not a valid directory.", file=sys.stderr)
         sys.exit(1)
-
-    cfg = _config.get()
 
     if args.digest:
         # CLI digest mode — no TUI

@@ -20,11 +20,12 @@ except ImportError:
     from git_ops import RepoInfo  # type: ignore[no-redef]
 
 
-def repo_signature(repo_path: Path) -> tuple[float, float, float]:
-    """Return (HEAD mtime, index mtime, refs/heads mtime) for *repo_path*.
+def repo_signature(repo_path: Path) -> tuple[float, float, float, float]:
+    """Return (HEAD mtime, index mtime, refs/heads mtime, packed-refs mtime).
 
     Any unreadable path contributes 0.0 so the tuple is always well-typed.
-    Missing files won't cause false positives after the first stable snapshot.
+    packed-refs is checked alongside refs/heads because cloned or gc'd repos
+    store references there rather than as individual files under refs/heads/.
     """
     def _mtime(p: Path) -> float:
         try:
@@ -37,17 +38,18 @@ def repo_signature(repo_path: Path) -> tuple[float, float, float]:
         _mtime(git_dir / "HEAD"),
         _mtime(git_dir / "index"),
         _mtime(git_dir / "refs" / "heads"),
+        _mtime(git_dir / "packed-refs"),
     )
 
 
-def snapshot(repos: list[RepoInfo]) -> dict[Path, tuple[float, float, float]]:
+def snapshot(repos: list[RepoInfo]) -> dict[Path, tuple[float, float, float, float]]:
     """Build a path → signature map for all repos. O(N) stat calls."""
     return {r.path: repo_signature(r.path) for r in repos}
 
 
 def changed_repos(
     repos: list[RepoInfo],
-    previous: dict[Path, tuple[float, float, float]],
+    previous: dict[Path, tuple[float, float, float, float]],
 ) -> list[RepoInfo]:
     """Return repos whose signature differs from *previous*.
 
