@@ -562,11 +562,13 @@ def commit_changes(path: Path, message: str) -> str:
     try:
         if not message.strip():
             return "Error: commit message cannot be empty"
-        # Check there is something staged
+        # Check there is something staged.
+        # On a repo with no commits yet, diff("HEAD") raises — fall back to
+        # checking the raw index entries so the very first commit is not blocked.
         try:
             staged = list(repo.index.diff("HEAD"))
         except Exception:
-            staged = []
+            staged = list(repo.index.entries.keys())
         if not staged:
             return "Nothing staged to commit. Stage files first."
         commit_obj = repo.index.commit(message.strip())

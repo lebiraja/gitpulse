@@ -195,8 +195,12 @@ class GitPulseApp(App):
 
     def _dispatch_bulk(self, action_key: str, repos: list) -> None:
         """Fan out a bulk git operation over repos using a thread pool worker."""
-        from gitpulse.git_ops import git_fetch, git_pull, git_push, git_gc, git_remote_prune, git_clean_dry, get_repo_info
-        from gitpulse.parallel import run_parallel
+        try:
+            from gitpulse.git_ops import git_fetch, git_pull, git_push, git_gc, git_remote_prune, git_clean_dry, get_repo_info
+            from gitpulse.parallel import run_parallel
+        except ImportError:
+            from git_ops import git_fetch, git_pull, git_push, git_gc, git_remote_prune, git_clean_dry, get_repo_info  # type: ignore[no-redef]
+            from parallel import run_parallel  # type: ignore[no-redef]
 
         _ops = {
             "fetch":   lambda r: git_fetch(r.path),
@@ -285,6 +289,18 @@ class GitPulseApp(App):
                 # Single-repo refresh from watch tick
                 updated: RepoInfo = event.worker.result
                 self._refresh_single_repo(updated)
+                return
+
+            if group == "branch_switch":
+                # Result is (switch_message, updated_RepoInfo)
+                switch_msg, updated_info = event.worker.result
+                self.notify(switch_msg, timeout=3)
+                self._refresh_single_repo(updated_info)
+                self._start_scan()
+                return
+
+            if group not in (None, "scan"):
+                # Unknown group (e.g. git_op owned by MainPanel) — ignore here.
                 return
 
             # Full scan result
@@ -429,23 +445,20 @@ class GitPulseApp(App):
         if self._selected_repo is None:
             return
 
-        result = switch_branch(self._selected_repo.path, message.branch_name)
-        self.notify(result, timeout=3)
+        path = self._selected_repo.path
+        branch_name = message.branch_name
 
-        # Refresh the selected repo's data
-        updated_info = get_repo_info(self._selected_repo.path)
-        self._select_repo(updated_info)
+        def _do_switch() -> tuple[str, RepoInfo]:
+            msg = switch_branch(path, branch_name)
+            info = get_repo_info(path)
+            return msg, info
 
-        # Also kick off a background rescan to update the sidebar
-        self._start_scan()
+        self.run_worker(_do_switch, thread=True, group="branch_switch", exclusive=False)
 
     def on_main_panel_reload_requested(self, message: MainPanel.ReloadRequested) -> None:
-        """Fired after a commit or branch operation — refresh sidebar entry."""
+        """Fired after a commit or branch operation — rescan to update sidebar."""
         if self._selected_repo is None:
             return
-        updated_info = get_repo_info(self._selected_repo.path)
-        self._selected_repo = updated_info
-        # Rescan to update sidebar badges/timestamps
         self._start_scan()
 
 
